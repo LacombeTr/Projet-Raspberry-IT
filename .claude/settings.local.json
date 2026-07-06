@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(/Users/tristan/Dev/projet-rasp/backend/.venv/bin/pip install *)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/bin/**)",
+      "Bash(rm -rf .venv)",
+      "Bash(python3.12 -m venv .venv)",
+      "Bash(.venv/bin/pip install *)",
+      "Bash(.venv/bin/python *)",
+      "Bash(npx tsc *)",
+      "Bash(.venv/bin/uvicorn main:app --port 8000)",
+      "Bash(curl -s http://localhost:8000/api/health)",
+      "Bash(curl -s http://localhost:8000/api/wind/)",
+      "Bash(kill %1)"
+    ]
+  }
+}
