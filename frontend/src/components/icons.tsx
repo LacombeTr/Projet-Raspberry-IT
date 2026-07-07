@@ -140,6 +140,44 @@ export function MoonIcon(props: IconProps) {
   );
 }
 
+export function ShieldIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+    </IconBase>
+  );
+}
+
+export function BellIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </IconBase>
+  );
+}
+
+export function BellOffIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M8.7 3.28a6 6 0 0 1 9.3 5.02c0 2.15.32 3.68.75 4.74" />
+      <path d="M6.5 6.5c-.34.6-.5 1.4-.5 1.8 0 7-3 9-3 9h14" />
+      <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+      <path d="M2 2l20 20" />
+    </IconBase>
+  );
+}
+
+export function MapIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894L8.106 3.447a2 2 0 0 1 1.788 0z" />
+      <path d="M15 5.764v15" />
+      <path d="M9 3.236v15" />
+    </IconBase>
+  );
+}
+
 export function RadarIcon(props: IconProps) {
   return (
     <IconBase {...props}>

@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
 import type { HazardStatus } from "./api/hazards";
 import { getFire, getFlood, getHeat, getWind } from "./api/hazards";
-import BuildingIllustration from "./components/BuildingIllustration";
 import Dashboard from "./components/Dashboard";
-import { MoonIcon, RefreshIcon, SunIcon, TriangleAlertIcon } from "./components/icons";
+import {
+  BellIcon,
+  BellOffIcon,
+  MoonIcon,
+  RefreshIcon,
+  ShieldIcon,
+  SunIcon,
+  TriangleAlertIcon,
+} from "./components/icons";
 import { useTheme } from "./hooks/useTheme";
 
 const POLL_INTERVAL = 30_000;
@@ -25,6 +32,7 @@ export default function App() {
   });
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   async function refresh() {
     try {
@@ -66,15 +74,15 @@ export default function App() {
 
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <header className="mb-6 flex flex-col gap-6 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-5">
-            <div className="hidden size-20 shrink-0 sm:block">
-              <BuildingIllustration />
+          <div className="flex items-center gap-4">
+            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-white/40">
+              <ShieldIcon className="size-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-extrabold uppercase tracking-tight text-slate-900 sm:text-4xl dark:text-white">
+              <h1 className="text-2xl font-extrabold uppercase tracking-tight text-blue-700 sm:text-3xl dark:text-sky-300">
                 Hazard Monitor
               </h1>
-              <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-slate-500 sm:text-sm">
+              <p className="mt-0.5 text-xs font-semibold uppercase tracking-widest text-slate-600 sm:text-sm dark:text-slate-400">
                 Surveillance des dangers environnementaux en temps réel
               </p>
             </div>
@@ -82,18 +90,38 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-2 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-600 ring-1 ring-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10">
-                <span className={`size-2 rounded-full ${error ? "bg-red-400" : "bg-emerald-400"}`} />
-                {error ? "Hors ligne" : "Temps réel · 30 s"}
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
+                  error
+                    ? "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/25"
+                    : "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                }`}
+              >
+                <span className={`size-2 rounded-full ${error ? "bg-red-500" : "bg-emerald-500"}`} />
+                {error ? "Hors ligne" : "Système Actif"}
               </span>
               <button
                 type="button"
                 onClick={toggleTheme}
                 aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
                 title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-                className="grid size-8 shrink-0 place-items-center rounded-md bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
               >
                 {theme === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setNotificationsEnabled((v) => !v)}
+                title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                aria-label={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                aria-pressed={notificationsEnabled}
+                className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors ${
+                  notificationsEnabled
+                    ? "bg-blue-500/15 text-blue-600 ring-blue-300 hover:bg-blue-500/25 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30 dark:hover:bg-blue-500/30"
+                    : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+                }`}
+              >
+                {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
               </button>
             </div>
             {lastRefresh && (
