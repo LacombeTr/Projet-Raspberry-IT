@@ -1,0 +1,212 @@
+import maplibregl from "maplibre-gl";
+import { useEffect, useRef } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import type { HazardStatus } from "../api/hazards";
+import { resolveCoordinates } from "../lib/geo";
+import { FlameIcon, ThermometerIcon, WavesIcon, WindIcon, XIcon } from "./icons";
+
+type HazardKey = "wind" | "heat" | "fire" | "flood";
+
+interface Props {
+  data: Record<HazardKey, HazardStatus | null>;
+  expanded?: boolean;
+  onCollapse?: () => void;
+}
+
+const HAZARDS = [
+  { key: "wind", title: "Vents violents", Icon: WindIcon },
+  { key: "heat", title: "Vague de chaleur", Icon: ThermometerIcon },
+  { key: "fire", title: "Incendies de forêt", Icon: FlameIcon },
+  { key: "flood", title: "Inondations", Icon: WavesIcon },
+] as const;
+
+const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+
+const SEVERITY_CHIP = {
+  ok: "bg-gradient-to-br from-emerald-400 to-emerald-600 ring-emerald-200",
+  warning: "bg-gradient-to-br from-amber-400 to-amber-600 ring-amber-200",
+  danger: "bg-gradient-to-br from-red-400 to-red-600 ring-red-200",
+} as const;
+
+const SEVERITY_LABEL = { ok: "Normal", warning: "Vigilance", danger: "Danger" } as const;
+
+const SEVERITY_BADGE = {
+  ok: "bg-emerald-500",
+  warning: "bg-amber-500",
+  danger: "bg-red-500",
+} as const;
+
+function CountDot({ label, dot }: { label: string; dot: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-400">
+      <span className={`size-2 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
+}
+
+export default function HazardMap({ data, expanded = false, onCollapse }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<{ marker: maplibregl.Marker; root: Root }[]>([]);
+
+  // Initialize the map once.
+  useEffect(() => {
+    if (!containerRef.current || mapRef.current) return;
+
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      style: MAP_STYLE,
+      center: [5.1, 44.2], // Provence / lower Rhône valley — where all monitored zones sit
+      zoom: 8,
+      attributionControl: { compact: true },
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    mapRef.current = map;
+
+    const resizeObserver = new ResizeObserver(() => map.resize());
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+      for (const { marker, root } of markersRef.current) {
+        marker.remove();
+        root.unmount();
+      }
+      markersRef.current = [];
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  // Sync markers whenever hazard data changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    function render(map: maplibregl.Map) {
+      for (const { marker, root } of markersRef.current) {
+        marker.remove();
+        root.unmount();
+      }
+      markersRef.current = [];
+
+      const bounds = new maplibregl.LngLatBounds();
+
+      for (const { key, title, Icon } of HAZARDS) {
+        const status = data[key];
+        if (!status) continue;
+
+        const [lng, lat] = resolveCoordinates(status.location);
+        bounds.extend([lng, lat]);
+        const el = document.createElement("div");
+        const root = createRoot(el);
+        root.render(
+          <div className="cursor-pointer">
+            <div
+              className={`grid size-9 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP[status.severity]}`}
+            >
+              <Icon className="size-4" />
+            </div>
+          </div>
+        );
+
+        const popupNode = document.createElement("div");
+        const popupRoot = createRoot(popupNode);
+        popupRoot.render(
+          <div className="w-64 bg-white p-4 dark:bg-[#111f36]">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+              <span
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE[status.severity]}`}
+              >
+                {SEVERITY_LABEL[status.severity]}
+              </span>
+            </div>
+            {status.value !== null && (
+              <p className="mb-1 text-lg font-extrabold text-slate-900 dark:text-white">
+                {status.value} <span className="text-xs font-medium text-slate-400">{status.unit}</span>
+              </p>
+            )}
+            <p className="mb-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              {status.description}
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500">
+              {status.location} · {status.source}
+            </p>
+          </div>
+        );
+
+        const marker = new maplibregl.Marker({ element: el })
+          .setLngLat([lng, lat])
+          .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setDOMContent(popupNode))
+          .addTo(map);
+
+        markersRef.current.push({ marker, root });
+      }
+
+      if (!bounds.isEmpty()) {
+        // Zoom in close enough that streets are actually visible, not just a regional overview.
+        map.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 0 });
+      }
+    }
+
+    if (map.isStyleLoaded()) render(map);
+    else map.once("load", () => render(map));
+  }, [data]);
+
+  return (
+    <>
+      {expanded && (
+        <div
+          aria-hidden="true"
+          onClick={onCollapse}
+          className="fixed inset-0 z-40 bg-slate-950/60 backdrop-blur-sm"
+        />
+      )}
+      <section
+        className={`group isolate flex h-full min-h-[420px] flex-col overflow-hidden border border-white/60 bg-white/25 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_30px_60px_-20px_rgba(56,189,248,0.35)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/15 dark:bg-white/[0.07] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35),0_30px_65px_-15px_rgba(56,189,248,0.3)] ${
+          expanded ? "fixed inset-4 z-50 rounded-[1.75rem] sm:inset-8" : "relative rounded-[1.75rem]"
+        }`}
+      >
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-y-16 -left-1/4 w-2/5 rotate-[16deg] bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-500 group-hover:translate-x-6 dark:via-white/10"
+        />
+        <div className="pointer-events-none absolute inset-x-4 top-0 h-px bg-gradient-to-r from-transparent via-white/90 to-transparent dark:via-white/30" />
+
+        <header className="relative mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-400">
+              Cartographie des Risques (Live)
+            </p>
+            <p className="mt-0.5 text-base font-semibold text-slate-900 dark:text-white">
+              Zones surveillées
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <CountDot label="Normal" dot="bg-emerald-500" />
+            <CountDot label="Vigilance" dot="bg-amber-500" />
+            <CountDot label="Danger" dot="bg-red-500" />
+            {expanded && onCollapse && (
+              <button
+                type="button"
+                onClick={onCollapse}
+                aria-label="Fermer la carte"
+                title="Fermer la carte"
+                className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/10 dark:text-slate-300 dark:ring-white/10"
+              >
+                <XIcon className="size-4" />
+              </button>
+            )}
+          </div>
+        </header>
+
+        <div
+          ref={containerRef}
+          className="relative w-full flex-1 overflow-hidden rounded-2xl ring-1 ring-black/5 dark:ring-white/10"
+        />
+      </section>
+    </>
+  );
+}
