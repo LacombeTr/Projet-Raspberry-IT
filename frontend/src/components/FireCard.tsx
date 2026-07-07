@@ -1,16 +1,11 @@
 import type { HazardStatus } from "../api/hazards";
-import HazardCard from "./HazardCard";
+import HazardCard, { HazardDescription } from "./HazardCard";
+import { FlameIcon } from "./icons";
 
 export default function FireCard({ data }: { data: HazardStatus | null }) {
   return (
-    <HazardCard icon="🔥" title="Incendies de forêt" data={data}>
-      {data && (
-        <>
-          <p className="text-slate-300 text-sm mb-1">{data.description}</p>
-          <p className="text-slate-400 text-sm mb-3">Zone : {data.location}</p>
-          <p className="text-slate-500 text-xs">{data.source}</p>
-        </>
-      )}
+    <HazardCard icon={<FlameIcon className="size-5" />} title="Incendies de forêt" data={data}>
+      {data && <HazardDescription>{data.description}</HazardDescription>}
     </HazardCard>
   );
 }
