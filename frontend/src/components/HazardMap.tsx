@@ -97,6 +97,65 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
         const status = data[key];
         if (!status) continue;
 
+        // Fire: drop one marker per active NASA FIRMS detection at its real
+        // coordinates instead of a single marker at the monitored point.
+        if (key === "fire" && status.fires && status.fires.length > 0) {
+          for (const fire of status.fires) {
+            bounds.extend([fire.longitude, fire.latitude]);
+
+            const el = document.createElement("div");
+            const root = createRoot(el);
+            root.render(
+              <div className="cursor-pointer">
+                <div
+                  className={`grid size-8 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP.danger}`}
+                >
+                  <Icon className="size-4" />
+                </div>
+              </div>
+            );
+
+            const popupNode = document.createElement("div");
+            const popupRoot = createRoot(popupNode);
+            popupRoot.render(
+              <div className="w-64 bg-white p-4 dark:bg-[#111f36]">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE.danger}`}
+                  >
+                    {SEVERITY_LABEL.danger}
+                  </span>
+                </div>
+                <p className="mb-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  Feu actif à {fire.distance_km} km du point surveillé
+                </p>
+                {fire.brightness !== null && (
+                  <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                    Brillance : {fire.brightness} K
+                  </p>
+                )}
+                {fire.acquired && (
+                  <p className="mb-2 text-[10px] text-slate-400 dark:text-slate-500">
+                    Détecté : {fire.acquired} UTC
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  {fire.latitude.toFixed(3)}, {fire.longitude.toFixed(3)} · {status.source}
+                </p>
+              </div>
+            );
+
+            const marker = new maplibregl.Marker({ element: el })
+              .setLngLat([fire.longitude, fire.latitude])
+              .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setDOMContent(popupNode))
+              .addTo(map);
+
+            markersRef.current.push({ marker, root });
+          }
+          continue;
+        }
+
         const [lng, lat] = resolveCoordinates(status.location);
         bounds.extend([lng, lat]);
         const el = document.createElement("div");

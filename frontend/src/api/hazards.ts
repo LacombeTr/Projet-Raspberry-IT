@@ -1,3 +1,11 @@
+export interface FirePoint {
+  latitude: number;
+  longitude: number;
+  distance_km: number;
+  brightness: number | null;
+  acquired: string | null;
+}
+
 export interface HazardStatus {
   hazard: string;
   severity: "ok" | "warning" | "danger";
@@ -7,6 +15,7 @@ export interface HazardStatus {
   description: string;
   source: string;
   last_updated: string;
+  fires?: FirePoint[] | null; // only present on the fire hazard
 }
 
 async function fetchHazard(path: string): Promise<HazardStatus> {
