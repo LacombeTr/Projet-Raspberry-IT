@@ -24,7 +24,7 @@ export default function AlertsPanel({ data }: Props) {
 
   return (
     <section
-      className={`group relative isolate flex flex-col overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-2xl backdrop-saturate-150 ${
+      className={`group relative isolate flex min-h-0 flex-col overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-2xl backdrop-saturate-150 ${
         isCalm
           ? "border-emerald-200/70 bg-emerald-50/40 dark:border-emerald-500/20 dark:bg-emerald-500/[0.06]"
           : "border-red-200/70 bg-red-50/40 dark:border-red-500/20 dark:bg-red-500/[0.06]"
@@ -52,7 +52,7 @@ export default function AlertsPanel({ data }: Props) {
           Tous les capteurs surveillés sont dans les seuils de sécurité.
         </p>
       ) : (
-        <ul className="relative flex-1 space-y-3">
+        <ul className="relative flex-1 space-y-3 overflow-y-auto">
           {alerts.map(({ key, title, status }) => {
             const ago = timeAgo(status.last_updated);
             const danger = status.severity === "danger";
