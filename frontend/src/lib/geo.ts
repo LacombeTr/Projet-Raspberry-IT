@@ -19,5 +19,17 @@ const DEFAULT_COORDS: [lng: number, lat: number] = [5.5, 43.7]; // Provence, FR
 
 export function resolveCoordinates(location: string | null): [lng: number, lat: number] {
   if (location && location in KNOWN_LOCATIONS) return KNOWN_LOCATIONS[location];
+
+  // Some backends return a raw "lat, lon" pair (e.g. the fire endpoint's
+  // monitored point). Parse it directly rather than falling back.
+  if (location) {
+    const m = location.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+    if (m) {
+      const lat = Number(m[1]);
+      const lng = Number(m[2]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) return [lng, lat];
+    }
+  }
+
   return DEFAULT_COORDS;
 }

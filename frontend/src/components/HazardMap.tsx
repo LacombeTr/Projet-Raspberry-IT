@@ -22,6 +22,21 @@ const HAZARDS = [
 
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
+// Fallback map center (lng, lat) matching the backend's monitored point
+// (config LONGITUDE/LATITUDE) — used until the API's coordinate is available.
+const MONITORED_CENTER: [number, number] = [4.85, 45.75];
+
+const FIT_OPTS = { padding: 80, maxZoom: 12 } as const;
+
+// Regional view around the monitored point, used for the map's very first paint
+// (before data arrives) so it shows instantly already dezoomed — not zoomed in
+// on the location. It closely matches the eventual data-driven fit, so the later
+// adjustment is imperceptible.
+const DEFAULT_BOUNDS = new maplibregl.LngLatBounds(
+  [MONITORED_CENTER[0] - 0.9, MONITORED_CENTER[1] - 0.5],
+  [MONITORED_CENTER[0] + 0.9, MONITORED_CENTER[1] + 0.5]
+);
+
 const SEVERITY_CHIP = {
   ok: "bg-gradient-to-br from-emerald-400 to-emerald-600 ring-emerald-200",
   warning: "bg-gradient-to-br from-amber-400 to-amber-600 ring-amber-200",
@@ -45,20 +60,60 @@ function CountDot({ label, dot }: { label: string; dot: string }) {
   );
 }
 
+// Compute the map camera: center on the coordinate the backend provides (the
+// fire endpoint's monitored point), and a bounds box symmetric around that
+// center so `fitBounds` picks a zoom that includes every displayed point
+// without ever shifting the center off the monitored coordinate.
+function computeView(
+  data: Record<HazardKey, HazardStatus | null>
+): { center: [number, number]; bounds: maplibregl.LngLatBounds } {
+  const center: [number, number] = data.fire?.location
+    ? resolveCoordinates(data.fire.location)
+    : MONITORED_CENTER;
+
+  const raw = new maplibregl.LngLatBounds();
+  for (const { key } of HAZARDS) {
+    const status = data[key];
+    if (!status) continue;
+    if (key === "fire" && status.fires && status.fires.length > 0) {
+      for (const fire of status.fires) raw.extend([fire.longitude, fire.latitude]);
+    } else {
+      raw.extend(resolveCoordinates(status.location));
+    }
+  }
+
+  if (raw.isEmpty()) return { center, bounds: new maplibregl.LngLatBounds(center, center) };
+
+  const sw = raw.getSouthWest();
+  const ne = raw.getNorthEast();
+  const dLng = Math.max(Math.abs(ne.lng - center[0]), Math.abs(center[0] - sw.lng));
+  const dLat = Math.max(Math.abs(ne.lat - center[1]), Math.abs(center[1] - sw.lat));
+  return {
+    center,
+    bounds: new maplibregl.LngLatBounds(
+      [center[0] - dLng, center[1] - dLat],
+      [center[0] + dLng, center[1] + dLat]
+    ),
+  };
+}
+
 export default function HazardMap({ data, expanded = false, onCollapse }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<{ marker: maplibregl.Marker; root: Root }[]>([]);
 
-  // Initialize the map once.
+  // Create the map immediately so it appears without waiting for the (slow,
+  // upstream-bound) hazard data. Its initial camera is the regional default
+  // bounds — already dezoomed — so there is no zoom-in-then-jump. The data
+  // effect below refines the framing once data lands.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: MAP_STYLE,
-      center: [5.1, 44.2], // Provence / lower Rhône valley — where all monitored zones sit
-      zoom: 8,
+      bounds: DEFAULT_BOUNDS,
+      fitBoundsOptions: FIT_OPTS,
       attributionControl: { compact: true },
     });
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -91,14 +146,68 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
       }
       markersRef.current = [];
 
-      const bounds = new maplibregl.LngLatBounds();
-
       for (const { key, title, Icon } of HAZARDS) {
         const status = data[key];
         if (!status) continue;
 
+        // Fire: drop one marker per active NASA FIRMS detection at its real
+        // coordinates instead of a single marker at the monitored point.
+        if (key === "fire" && status.fires && status.fires.length > 0) {
+          for (const fire of status.fires) {
+            const el = document.createElement("div");
+            const root = createRoot(el);
+            root.render(
+              <div className="cursor-pointer">
+                <div
+                  className={`grid size-8 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP.danger}`}
+                >
+                  <Icon className="size-4" />
+                </div>
+              </div>
+            );
+
+            const popupNode = document.createElement("div");
+            const popupRoot = createRoot(popupNode);
+            popupRoot.render(
+              <div className="w-64 bg-white p-4 dark:bg-[#111f36]">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE.danger}`}
+                  >
+                    {SEVERITY_LABEL.danger}
+                  </span>
+                </div>
+                <p className="mb-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                  Feu actif à {fire.distance_km} km du point surveillé
+                </p>
+                {fire.brightness !== null && (
+                  <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                    Brillance : {fire.brightness} K
+                  </p>
+                )}
+                {fire.acquired && (
+                  <p className="mb-2 text-[10px] text-slate-400 dark:text-slate-500">
+                    Détecté : {fire.acquired} UTC
+                  </p>
+                )}
+                <p className="text-[10px] text-slate-400 dark:text-slate-500">
+                  {fire.latitude.toFixed(3)}, {fire.longitude.toFixed(3)} · {status.source}
+                </p>
+              </div>
+            );
+
+            const marker = new maplibregl.Marker({ element: el })
+              .setLngLat([fire.longitude, fire.latitude])
+              .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setDOMContent(popupNode))
+              .addTo(map);
+
+            markersRef.current.push({ marker, root });
+          }
+          continue;
+        }
+
         const [lng, lat] = resolveCoordinates(status.location);
-        bounds.extend([lng, lat]);
         const el = document.createElement("div");
         const root = createRoot(el);
         root.render(
@@ -145,9 +254,11 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
         markersRef.current.push({ marker, root });
       }
 
-      if (!bounds.isEmpty()) {
-        // Zoom in close enough that streets are actually visible, not just a regional overview.
-        map.fitBounds(bounds, { padding: 80, maxZoom: 12, duration: 0 });
+      // Refine the framing once data is available. Before then, leave the
+      // regional default bounds the map was created with untouched.
+      if (Object.values(data).some(Boolean)) {
+        const { bounds } = computeView(data);
+        map.fitBounds(bounds, { ...FIT_OPTS, duration: 0 });
       }
     }
 

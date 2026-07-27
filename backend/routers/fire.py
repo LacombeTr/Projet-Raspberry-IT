@@ -5,7 +5,7 @@ import httpx
 from fastapi import APIRouter, HTTPException
 
 from config import settings
-from schemas import HazardStatus
+from schemas import FirePoint, HazardStatus
 
 router = APIRouter()
 
@@ -36,9 +36,10 @@ async def get_fire_status():
         raise HTTPException(status_code=502, detail="NASA FIRMS API unavailable")
 
     lines = response.text.strip().splitlines()
-    nearby_fires = []
+    nearby_fires: list[FirePoint] = []
     for line in lines[1:]:  # skip CSV header
         parts = line.split(",")
+        # FIRMS MODIS CSV: latitude, longitude, brightness, scan, track, acq_date, acq_time, ...
         if len(parts) < 2:
             continue
         try:
@@ -46,15 +47,33 @@ async def get_fire_status():
         except ValueError:
             continue
         dist = _haversine_km(settings.LATITUDE, settings.LONGITUDE, fire_lat, fire_lon)
+        if dist > settings.FIRE_RADIUS_KM:
+            continue
 
-        if fire_lat >= 40 and fire_lat <= 50 and fire_lon >= 0 and fire_lon <= 10:  # Debugging line
-            print(f"Fire detected at ({fire_lat}, {fire_lon}) - Distance: {dist:.2f} km")  # Debugging line
+        brightness = None
+        if len(parts) > 2:
+            try:
+                brightness = float(parts[2])
+            except ValueError:
+                brightness = None
 
-        if dist <= settings.FIRE_RADIUS_KM:
-            nearby_fires.append(round(dist, 1))
+        acquired = None
+        if len(parts) > 6:
+            acq_date, acq_time = parts[5], parts[6].zfill(4)
+            acquired = f"{acq_date} {acq_time[:2]}:{acq_time[2:]}"
+
+        nearby_fires.append(
+            FirePoint(
+                latitude=fire_lat,
+                longitude=fire_lon,
+                distance_km=round(dist, 1),
+                brightness=brightness,
+                acquired=acquired,
+            )
+        )
 
     if nearby_fires:
-        closest = min(nearby_fires)
+        closest = min(f.distance_km for f in nearby_fires)
         severity = "danger"
         description = f"{len(nearby_fires)} feu(x) actif(s) détecté(s) — le plus proche à {closest} km"
     else:
@@ -68,4 +87,5 @@ async def get_fire_status():
         description=description,
         source="NASA FIRMS (MODIS_NRT)",
         last_updated=today,
+        fires=nearby_fires,
     )
