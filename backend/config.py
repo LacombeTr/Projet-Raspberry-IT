@@ -8,6 +8,9 @@ class Settings(BaseSettings):
     FIRMS_SOURCE: str
     LATITUDE: float
     LONGITUDE: float
+    VIGICRUES_STATION_CODE: str
+    METEOFRANCE_API_KEY: str
+    METEOFRANCE_DEPT: str
 
     model_config = SettingsConfigDict(
         env_file=".env", 
