@@ -65,7 +65,7 @@ async def get_flood_status():
         try:
             mf_resp = await client.get(
                 METEOFRANCE_VIGILANCE_URL,
-                params={"token": settings.METEOFRANCE_API_KEY},
+                headers={"apikey": settings.METEOFRANCE_API_KEY},
             )
             if mf_resp.status_code == 200:
                 mf_data = mf_resp.json()
