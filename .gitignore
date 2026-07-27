@@ -36,6 +36,7 @@ backend/*.sqlite3
 # Frontend dependencies and build outputs
 frontend/node_modules/
 frontend/dist/
+frontend/*.tsbuildinfo
 dist/
 node_modules/
 
