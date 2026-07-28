@@ -48,11 +48,20 @@ Variables à renseigner dans `.env` :
 | `FIRE_RADIUS_KM` | Rayon de détection des incendies (en km) |
 | `FIRMS_URL` | URL de l'API FIRMS |
 | `FIRMS_SOURCE` | Source satellite (ex: `VIIRS_NOAA20_NRT`) |
-| `LATITUDE` | Latitude de la localisation à surveiller |
-| `LONGITUDE` | Longitude de la localisation à surveiller |
-| `VIGICRUES_STATION_CODE` | Code station Vigicrues (inondations) |
+| `LATITUDE` | Latitude **par défaut** (utilisée si le navigateur ne partage pas la position GPS) |
+| `LONGITUDE` | Longitude **par défaut** (utilisée si le navigateur ne partage pas la position GPS) |
+| `VIGICRUES_STATION_CODE` | Code station Vigicrues **par défaut** (repli si la station la plus proche est introuvable) |
 | `METEOFRANCE_API_KEY` | Clé API Météo-France |
-| `METEOFRANCE_DEPT` | Numéro de département (ex: `69`) |
+| `METEOFRANCE_DEPT` | Département **par défaut** (repli si le département ne peut être déduit des coordonnées) |
+
+> **Localisation dynamique** : le front-end demande la position GPS du navigateur et
+> la transmet aux endpoints via les paramètres `?lat=&lon=`. Les hazards (vent, chaleur,
+> incendies) sont alors calculés autour de ce point ; pour les inondations, le
+> département (via `geo.api.gouv.fr`) et la station Vigicrues la plus proche (via le
+> référentiel Opendatasoft) sont déduits des coordonnées. Le libellé affiché correspond
+> au tronçon de vigilance crues le plus proche (flux `InfoVigiCru.geojson` de Vigicrues,
+> ex. « Seine à Paris »), avec repli sur le cours d'eau de la station puis son code. Les
+> variables ci-dessus servent de valeurs de repli lorsqu'aucune position n'est disponible.
 
 ### Lancer le serveur
 

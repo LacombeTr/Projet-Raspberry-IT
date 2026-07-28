@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from config import settings
+from location import Coordinates, get_coordinates
 from schemas import HazardStatus
 
 router = APIRouter()
@@ -15,10 +16,10 @@ HEAT_WARNING_THRESHOLD = 30.0
 
 
 @router.get("/", response_model=HazardStatus)
-async def get_heat_status():
+async def get_heat_status(coords: Coordinates = Depends(get_coordinates)):
     params = {
-        "lat": settings.LATITUDE,
-        "lon": settings.LONGITUDE,
+        "lat": coords.lat,
+        "lon": coords.lon,
         "appid": settings.OPENWEATHERMAP_API_KEY,
         "units": "metric",
     }
@@ -31,7 +32,7 @@ async def get_heat_status():
 
     data = response.json()
     temp = data["main"]["temp"]
-    city = data.get("name", f"{settings.LATITUDE}, {settings.LONGITUDE}")
+    city = data.get("name", f"{coords.lat}, {coords.lon}")
     last_updated = datetime.fromtimestamp(data["dt"], tz=timezone.utc).isoformat()
 
     if temp > HEAT_DANGER_THRESHOLD:

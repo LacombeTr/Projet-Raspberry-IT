@@ -1,9 +1,16 @@
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from config import settings
+from location import (
+    Coordinates,
+    get_coordinates,
+    nearest_vigicrues_station,
+    nearest_vigilance_section,
+    resolve_department,
+)
 from schemas import HazardStatus
 
 router = APIRouter()
@@ -36,19 +43,26 @@ def _worst(a: str, b: str) -> str:
 
 
 @router.get("/", response_model=HazardStatus)
-async def get_flood_status():
+async def get_flood_status(coords: Coordinates = Depends(get_coordinates)):
     now = datetime.now(tz=timezone.utc).isoformat()
     vigicrues_severity = None
     meteofrance_severity = None
     sources = []
 
     async with httpx.AsyncClient(timeout=10) as client:
+        # Derive the flood context from the requested coordinate: the nearest
+        # Vigicrues station and the department the point falls in. Both degrade
+        # to the configured defaults if their lookup fails.
+        station = await nearest_vigicrues_station(client, coords.lat, coords.lon)
+        dept = await resolve_department(client, coords.lat, coords.lon)
+        section = await nearest_vigilance_section(client, coords.lat, coords.lon)
+
         # --- Vigicrues ---
         try:
             vc_resp = await client.get(
                 VIGICRUES_URL,
                 params={
-                    "CdStationHydro": settings.VIGICRUES_STATION_CODE,
+                    "CdStationHydro": station.code,
                     "GrdSerie": "H",
                     "FormatSortie": "simple",
                 },
@@ -71,7 +85,7 @@ async def get_flood_status():
                 mf_data = mf_resp.json()
                 dept_color = "vert"
                 for item in mf_data.get("product", {}).get("text_bloc_items", []):
-                    if item.get("domain_id") == settings.METEOFRANCE_DEPT:
+                    if item.get("domain_id") == dept:
                         for phenomenon in item.get("phenomenon_items", []):
                             if "inondation" in phenomenon.get("phenomenon_max_color_id", "").lower() or \
                                phenomenon.get("phenomenon_id") in ("6", "4"):
@@ -103,7 +117,13 @@ async def get_flood_status():
         severity=severity,
         value=None,
         unit=None,
-        location=f"Station {settings.VIGICRUES_STATION_CODE} / Dept. {settings.METEOFRANCE_DEPT}",
+        location=(
+            f"{section} (Dépt. {dept})"
+            if section
+            else f"{station.river} (Dépt. {dept})"
+            if station.river
+            else f"Station {station.code} (Dépt. {dept})"
+        ),
         description=description,
         source=source_str,
         last_updated=now,
