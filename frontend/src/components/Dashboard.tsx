@@ -99,7 +99,7 @@ export default function Dashboard({ data, humidex, userCoords }: Props) {
         <StatCard
           icon={<ThermometerIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-orange-400 to-orange-500 text-white"
-          label="Température"
+          label="Température mesurée"
           loading={!humidex}
           value={
             humidex &&
@@ -126,7 +126,7 @@ export default function Dashboard({ data, humidex, userCoords }: Props) {
         <StatCard
           icon={<DropletIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-amber-400 to-amber-500 text-white"
-          label="Humidex"
+          label="Humidex mesuré"
           loading={!humidex}
           value={humidex && (humidex.humidex !== null ? humidex.humidex : "—")}
           footer={
