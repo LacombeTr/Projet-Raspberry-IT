@@ -1,9 +1,9 @@
 import { lazy, Suspense } from "react";
-import type { HazardStatus } from "../api/hazards";
+import type { HazardStatus, HumidexStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
 import { SEVERITY_LABEL } from "../lib/hazardMeta";
 import AlertsPanel from "./AlertsPanel";
-import { FlameIcon, ThermometerIcon, WavesIcon, WindIcon } from "./icons";
+import { DropletIcon, FlameIcon, ThermometerIcon, WavesIcon, WindIcon } from "./icons";
 import MonitoringPoints from "./MonitoringPoints";
 import StatCard from "./StatCard";
 
@@ -13,6 +13,7 @@ const HazardMap = lazy(() => import("./HazardMap"));
 
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
+  humidex: HumidexStatus | null;
 }
 
 const SEVERITY_TEXT = {
@@ -25,11 +26,34 @@ function SeverityValue({ status }: { status: HazardStatus }) {
   return <span className={`text-xl ${SEVERITY_TEXT[status.severity]}`}>{SEVERITY_LABEL[status.severity]}</span>;
 }
 
-export default function Dashboard({ data }: Props) {
+// Sévérité simple dérivée du seuil de température, distincte de l'indice
+// humidex complet (réservé à une StatCard dédiée).
+function temperatureSeverity(temp: number | null): "ok" | "warning" | "danger" {
+  if (temp === null) return "ok";
+  if (temp >= 35) return "danger";
+  if (temp >= 30) return "warning";
+  return "ok";
+}
+
+const TEMPERATURE_DESCRIPTION = {
+  ok: "Température normale",
+  warning: "Chaleur élevée",
+  danger: "Chaleur extrême",
+} as const;
+
+const HUMIDEX_SEVERITY_TEXT = {
+  ok: "text-emerald-600 dark:text-emerald-400",
+  inconfort: "text-amber-500 dark:text-amber-400",
+  grand_inconfort: "text-orange-600 dark:text-orange-400",
+  warning: "text-amber-600 dark:text-amber-400",
+  danger: "text-red-600 dark:text-red-400",
+} as const;
+
+export default function Dashboard({ data, humidex }: Props) {
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Top row: the 4 monitored hazards. 2-up on small screens, 4-up on tablet/panel widths. Fixed height. */}
-      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Top row: the 5 monitored hazards. 2-up on small screens, 3-up on small tablets, 5-up on wide panels. Fixed height. */}
+      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         <StatCard
           icon={<WindIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-sky-400 to-sky-500 text-white"
@@ -73,19 +97,37 @@ export default function Dashboard({ data }: Props) {
           icon={<ThermometerIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-orange-400 to-orange-500 text-white"
           label="Température"
-          loading={!data.heat}
+          loading={!humidex}
           value={
-            data.heat && (
+            humidex &&
+            (humidex.temperature !== null ? (
               <>
-                {data.heat.value}
-                <span className="ml-1 text-sm font-semibold text-slate-500 dark:text-slate-400">
-                  {data.heat.unit}
-                </span>
+                {humidex.temperature}
+                <span className="ml-1 text-sm font-semibold text-slate-500 dark:text-slate-400">°C</span>
               </>
-            )
+            ) : (
+              "—"
+            ))
           }
           footer={
-            data.heat && <span className={SEVERITY_TEXT[data.heat.severity]}>{data.heat.description}</span>
+            humidex &&
+            (humidex.temperature !== null ? (
+              <span className={SEVERITY_TEXT[temperatureSeverity(humidex.temperature)]}>
+                {TEMPERATURE_DESCRIPTION[temperatureSeverity(humidex.temperature)]}
+              </span>
+            ) : (
+              <span className="text-slate-600 dark:text-slate-400">{humidex.description}</span>
+            ))
+          }
+        />
+        <StatCard
+          icon={<DropletIcon className="size-4" />}
+          iconClasses="bg-gradient-to-br from-amber-400 to-amber-500 text-white"
+          label="Humidex"
+          loading={!humidex}
+          value={humidex && (humidex.humidex !== null ? humidex.humidex : "—")}
+          footer={
+            humidex && <span className={HUMIDEX_SEVERITY_TEXT[humidex.severity]}>{humidex.description}</span>
           }
         />
       </div>

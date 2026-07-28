@@ -187,6 +187,14 @@ export function MapIcon(props: IconProps) {
   );
 }
 
+export function DropletIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 2.69s5 5.16 5 8.31a5 5 0 0 1-10 0c0-3.15 5-8.31 5-8.31Z" />
+    </IconBase>
+  );
+}
+
 export function RadarIcon(props: IconProps) {
   return (
     <IconBase {...props}>

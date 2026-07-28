@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import type { HazardStatus } from "./api/hazards";
-import { getFire, getFlood, getHeat, getWind } from "./api/hazards";
+import type { HazardStatus, HumidexStatus } from "./api/hazards";
+import { getFire, getFlood, getHeat, getHumidex, getWind } from "./api/hazards";
 import Dashboard from "./components/Dashboard";
 import {
   BellIcon,
@@ -30,19 +30,22 @@ export default function App() {
     fire: null,
     flood: null,
   });
+  const [humidex, setHumidex] = useState<HumidexStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   async function refresh() {
     try {
-      const [wind, heat, fire, flood] = await Promise.all([
+      const [wind, heat, fire, flood, humidexReading] = await Promise.all([
         getWind(),
         getHeat(),
         getFire(),
         getFlood(),
+        getHumidex(),
       ]);
       setData({ wind, heat, fire, flood });
+      setHumidex(humidexReading);
       setLastRefresh(new Date());
       setError(null);
     } catch (e) {
@@ -142,7 +145,7 @@ export default function App() {
         )}
 
         <main className="min-h-0 flex-1">
-          <Dashboard data={data} />
+          <Dashboard data={data} humidex={humidex} />
         </main>
       </div>
     </div>
