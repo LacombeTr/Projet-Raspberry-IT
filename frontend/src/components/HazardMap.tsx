@@ -1,24 +1,24 @@
 import maplibregl from "maplibre-gl";
 import { useEffect, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { HazardStatus } from "../api/hazards";
+import type { Coords, HazardStatus } from "../api/hazards";
 import { resolveCoordinates } from "../lib/geo";
-import { FlameIcon, ThermometerIcon, WavesIcon, WindIcon, XIcon } from "./icons";
+import { firePointPlace } from "../lib/hazardMeta";
+import { FlameIcon, XIcon } from "./icons";
 
 type HazardKey = "wind" | "heat" | "fire" | "flood";
 
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
+  userCoords?: Coords | null;
   expanded?: boolean;
   onCollapse?: () => void;
 }
 
-const HAZARDS = [
-  { key: "wind", title: "Vents violents", Icon: WindIcon },
-  { key: "heat", title: "Vague de chaleur", Icon: ThermometerIcon },
-  { key: "fire", title: "Incendies de forêt", Icon: FlameIcon },
-  { key: "flood", title: "Inondations", Icon: WavesIcon },
-] as const;
+// Only fire is plotted on the map (one marker per NASA FIRMS detection at its
+// real coordinates). Wind, heat and flood describe a single monitored point and
+// are surfaced in the cards/alerts instead, not on the map.
+const FIRE_TITLE = "Feu détecté";
 
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 
@@ -64,23 +64,29 @@ function CountDot({ label, dot }: { label: string; dot: string }) {
 // fire endpoint's monitored point), and a bounds box symmetric around that
 // center so `fitBounds` picks a zoom that includes every displayed point
 // without ever shifting the center off the monitored coordinate.
-function computeView(
-  data: Record<HazardKey, HazardStatus | null>
-): { center: [number, number]; bounds: maplibregl.LngLatBounds } {
-  const center: [number, number] = data.fire?.location
-    ? resolveCoordinates(data.fire.location)
-    : MONITORED_CENTER;
+// The monitored point (lng, lat): the user's own GPS position; otherwise the
+// backend's coordinate echoed by the fire endpoint; otherwise the regional
+// fallback. Wind/heat/flood are all measured here — only fire has its own
+// per-detection coordinates.
+function monitoredCenter(
+  data: Record<HazardKey, HazardStatus | null>,
+  userCoords?: Coords | null
+): [number, number] {
+  if (userCoords) return [userCoords.lon, userCoords.lat];
+  if (data.fire?.location) return resolveCoordinates(data.fire.location);
+  return MONITORED_CENTER;
+}
 
+function computeView(
+  data: Record<HazardKey, HazardStatus | null>,
+  userCoords?: Coords | null
+): { center: [number, number]; bounds: maplibregl.LngLatBounds } {
+  const center = monitoredCenter(data, userCoords);
+
+  // Frame around the monitored point plus every active fire detection.
   const raw = new maplibregl.LngLatBounds();
-  for (const { key } of HAZARDS) {
-    const status = data[key];
-    if (!status) continue;
-    if (key === "fire" && status.fires && status.fires.length > 0) {
-      for (const fire of status.fires) raw.extend([fire.longitude, fire.latitude]);
-    } else {
-      raw.extend(resolveCoordinates(status.location));
-    }
-  }
+  raw.extend(center);
+  for (const fire of data.fire?.fires ?? []) raw.extend([fire.longitude, fire.latitude]);
 
   if (raw.isEmpty()) return { center, bounds: new maplibregl.LngLatBounds(center, center) };
 
@@ -97,7 +103,7 @@ function computeView(
   };
 }
 
-export default function HazardMap({ data, expanded = false, onCollapse }: Props) {
+export default function HazardMap({ data, userCoords, expanded = false, onCollapse }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markersRef = useRef<{ marker: maplibregl.Marker; root: Root }[]>([]);
@@ -146,76 +152,18 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
       }
       markersRef.current = [];
 
-      for (const { key, title, Icon } of HAZARDS) {
-        const status = data[key];
-        if (!status) continue;
-
-        // Fire: drop one marker per active NASA FIRMS detection at its real
-        // coordinates instead of a single marker at the monitored point.
-        if (key === "fire" && status.fires && status.fires.length > 0) {
-          for (const fire of status.fires) {
-            const el = document.createElement("div");
-            const root = createRoot(el);
-            root.render(
-              <div className="cursor-pointer">
-                <div
-                  className={`grid size-8 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP.danger}`}
-                >
-                  <Icon className="size-4" />
-                </div>
-              </div>
-            );
-
-            const popupNode = document.createElement("div");
-            const popupRoot = createRoot(popupNode);
-            popupRoot.render(
-              <div className="w-64 bg-white p-4 dark:bg-[#111f36]">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
-                  <span
-                    className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE.danger}`}
-                  >
-                    {SEVERITY_LABEL.danger}
-                  </span>
-                </div>
-                <p className="mb-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                  Feu actif à {fire.distance_km} km du point surveillé
-                </p>
-                {fire.brightness !== null && (
-                  <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
-                    Brillance : {fire.brightness} K
-                  </p>
-                )}
-                {fire.acquired && (
-                  <p className="mb-2 text-[10px] text-slate-400 dark:text-slate-500">
-                    Détecté : {fire.acquired} UTC
-                  </p>
-                )}
-                <p className="text-[10px] text-slate-400 dark:text-slate-500">
-                  {fire.latitude.toFixed(3)}, {fire.longitude.toFixed(3)} · {status.source}
-                </p>
-              </div>
-            );
-
-            const marker = new maplibregl.Marker({ element: el })
-              .setLngLat([fire.longitude, fire.latitude])
-              .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setDOMContent(popupNode))
-              .addTo(map);
-
-            markersRef.current.push({ marker, root });
-          }
-          continue;
-        }
-
-        const [lng, lat] = resolveCoordinates(status.location);
+      // Fire is the only hazard on the map: one marker per active NASA FIRMS
+      // detection at its real coordinates.
+      const fireSource = data.fire?.source;
+      for (const fire of data.fire?.fires ?? []) {
         const el = document.createElement("div");
         const root = createRoot(el);
         root.render(
           <div className="cursor-pointer">
             <div
-              className={`grid size-9 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP[status.severity]}`}
+              className={`grid size-8 place-items-center rounded-full text-white shadow-lg ring-2 ring-white/80 transition-transform hover:scale-110 ${SEVERITY_CHIP.danger}`}
             >
-              <Icon className="size-4" />
+              <FlameIcon className="size-4" />
             </div>
           </div>
         );
@@ -225,46 +173,57 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
         popupRoot.render(
           <div className="w-64 bg-white p-4 dark:bg-[#111f36]">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-sm font-bold text-slate-900 dark:text-white">{title}</p>
+              <p className="text-sm font-bold text-slate-900 dark:text-white">{FIRE_TITLE}</p>
               <span
-                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE[status.severity]}`}
+                className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${SEVERITY_BADGE.danger}`}
               >
-                {SEVERITY_LABEL[status.severity]}
+                {SEVERITY_LABEL.danger}
               </span>
             </div>
-            {status.value !== null && (
-              <p className="mb-1 text-lg font-extrabold text-slate-900 dark:text-white">
-                {status.value} <span className="text-xs font-medium text-slate-400">{status.unit}</span>
+            {firePointPlace(fire) && (
+              <p className="mb-1 text-sm font-semibold text-slate-900 dark:text-white">
+                {firePointPlace(fire)}
               </p>
             )}
-            <p className="mb-2 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-              {status.description}
+            <p className="mb-1 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              Feu actif — {fire.distance_km} km du point surveillé
             </p>
+            {fire.brightness !== null && (
+              <p className="mb-1 text-xs text-slate-500 dark:text-slate-400">
+                Brillance : {fire.brightness} K
+              </p>
+            )}
+            {fire.acquired && (
+              <p className="mb-2 text-[10px] text-slate-400 dark:text-slate-500">
+                Détecté : {fire.acquired} UTC
+              </p>
+            )}
             <p className="text-[10px] text-slate-400 dark:text-slate-500">
-              {status.location} · {status.source}
+              {fire.latitude.toFixed(3)}, {fire.longitude.toFixed(3)} · {fireSource}
             </p>
           </div>
         );
 
         const marker = new maplibregl.Marker({ element: el })
-          .setLngLat([lng, lat])
+          .setLngLat([fire.longitude, fire.latitude])
           .setPopup(new maplibregl.Popup({ offset: 20, closeButton: false }).setDOMContent(popupNode))
           .addTo(map);
 
         markersRef.current.push({ marker, root });
       }
 
-      // Refine the framing once data is available. Before then, leave the
-      // regional default bounds the map was created with untouched.
-      if (Object.values(data).some(Boolean)) {
-        const { bounds } = computeView(data);
+      // Refine the framing once we have something to frame — the user's own
+      // position or any hazard data. Before then, leave the regional default
+      // bounds the map was created with untouched.
+      if (userCoords || Object.values(data).some(Boolean)) {
+        const { bounds } = computeView(data, userCoords);
         map.fitBounds(bounds, { ...FIT_OPTS, duration: 0 });
       }
     }
 
     if (map.isStyleLoaded()) render(map);
     else map.once("load", () => render(map));
-  }, [data]);
+  }, [data, userCoords]);
 
   return (
     <>

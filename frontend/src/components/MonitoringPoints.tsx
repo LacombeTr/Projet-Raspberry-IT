@@ -1,6 +1,7 @@
 import type { HazardStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
-import { listActiveHazards, SEVERITY_LABEL } from "../lib/hazardMeta";
+import { fireCommunesLabel, listActiveHazards, SEVERITY_LABEL } from "../lib/hazardMeta";
+import { MapIcon } from "./icons";
 
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
@@ -33,38 +34,48 @@ export default function MonitoringPoints({ data }: Props) {
         </span>
       </header>
 
-      {entries.length === 0 ? (
-        <div className="relative space-y-2">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-14 animate-pulse rounded-2xl bg-slate-900/5 dark:bg-white/10" />
-          ))}
-        </div>
-      ) : (
-        <ul className="relative space-y-2">
-          {entries.map(({ key, title, Icon, status }) => (
-            <li
-              key={key}
-              className="flex items-center gap-3 rounded-2xl bg-white/40 p-2.5 ring-1 ring-white/60 dark:bg-white/5 dark:ring-white/10"
-            >
-              <div
-                className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${SEVERITY_CHIP[status.severity]}`}
+        {entries.length === 0 ? (
+          <div className="relative space-y-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-14 animate-pulse rounded-2xl bg-slate-900/5 dark:bg-white/10" />
+            ))}
+          </div>
+        ) : (
+          <ul className="relative space-y-2">
+            {entries.map(({ key, title, Icon, status }) => (
+              <li
+                key={key}
+                className="flex items-center gap-3 rounded-2xl bg-white/40 p-2.5 ring-1 ring-white/60 dark:bg-white/5 dark:ring-white/10"
               >
-                <Icon className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
-                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {status.location ?? status.source}
-                </p>
-              </div>
-              <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-                <span className={`size-2 rounded-full ${SEVERITY_DOT[status.severity]}`} />
-                {SEVERITY_LABEL[status.severity]}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+                <div
+                  className={`grid size-9 shrink-0 place-items-center rounded-xl text-white ${SEVERITY_CHIP[status.severity]}`}
+                >
+                  <Icon className="size-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {(key === "fire" && fireCommunesLabel(status)) || status.location || status.source}
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                  <span className={`size-2 rounded-full ${SEVERITY_DOT[status.severity]}`} />
+                  {SEVERITY_LABEL[status.severity]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <button
+        type="button"
+        onClick={onExpandMap}
+        className="relative isolate flex shrink-0 items-center justify-center gap-2 overflow-hidden rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/30 transition-transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-blue-500/40"
+      >
+        <MapIcon className="size-4" />
+        Voir la carte complète
+      </button>
+    </>
   );
 }
