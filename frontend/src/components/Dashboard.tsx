@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import type { HazardStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
 import { SEVERITY_LABEL } from "../lib/hazardMeta";
@@ -26,8 +26,6 @@ function SeverityValue({ status }: { status: HazardStatus }) {
 }
 
 export default function Dashboard({ data }: Props) {
-  const [mapExpanded, setMapExpanded] = useState(false);
-
   return (
     <div className="flex h-full flex-col gap-3">
       {/* Top row: the 4 monitored hazards. 2-up on small screens, 4-up on tablet/panel widths. Fixed height. */}
@@ -92,9 +90,9 @@ export default function Dashboard({ data }: Props) {
         />
       </div>
 
-      {/* Map, active alerts and monitoring points all at the same level. Fills remaining height. */}
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3">
-        <div className="min-h-0 lg:col-span-2">
+      {/* Map on the left half, alerts and monitoring points on the right half. Fills remaining height. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="min-h-0">
           <Suspense
             fallback={
               <div className="flex h-full items-center justify-center rounded-[1.75rem] border border-white/60 bg-white/25 text-sm text-slate-500 backdrop-blur-2xl dark:border-white/15 dark:bg-white/[0.07] dark:text-slate-400">
@@ -102,13 +100,13 @@ export default function Dashboard({ data }: Props) {
               </div>
             }
           >
-            <HazardMap data={data} expanded={mapExpanded} onCollapse={() => setMapExpanded(false)} />
+            <HazardMap data={data} />
           </Suspense>
         </div>
 
         <div className="flex min-h-0 flex-col gap-3">
           <AlertsPanel data={data} />
-          <MonitoringPoints data={data} onExpandMap={() => setMapExpanded(true)} />
+          <MonitoringPoints data={data} />
         </div>
       </div>
     </div>
