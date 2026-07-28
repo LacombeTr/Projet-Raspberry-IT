@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from config import settings
+from location import Coordinates, get_coordinates
 from schemas import HazardStatus
 
 router = APIRouter()
@@ -15,10 +16,10 @@ WIND_WARNING_THRESHOLD = 40.0
 
 
 @router.get("/", response_model=HazardStatus)
-async def get_wind_status():
+async def get_wind_status(coords: Coordinates = Depends(get_coordinates)):
     params = {
-        "lat": settings.LATITUDE,
-        "lon": settings.LONGITUDE,
+        "lat": coords.lat,
+        "lon": coords.lon,
         "appid": settings.OPENWEATHERMAP_API_KEY,
         "units": "metric",
     }
@@ -32,7 +33,7 @@ async def get_wind_status():
     data = response.json()
     wind_ms = data["wind"]["speed"]
     wind_kmh = round(wind_ms * 3.6, 1)
-    city = data.get("name", f"{settings.LATITUDE}, {settings.LONGITUDE}")
+    city = data.get("name", f"{coords.lat}, {coords.lon}")
     last_updated = datetime.fromtimestamp(data["dt"], tz=timezone.utc).isoformat()
 
     if wind_kmh > WIND_DANGER_THRESHOLD:

@@ -1,12 +1,30 @@
 import { FlameIcon, ThermometerIcon, WavesIcon, WindIcon } from "../components/icons";
-import type { HazardStatus } from "../api/hazards";
+import type { FirePoint, HazardStatus } from "../api/hazards";
 
 export type HazardKey = "wind" | "heat" | "fire" | "flood";
+
+/** A fire detection's place as "Commune (XX)", or just the commune, or null. */
+export function firePointPlace(fire: FirePoint): string | null {
+  if (!fire.commune) return null;
+  return fire.department ? `${fire.commune} (${fire.department})` : fire.commune;
+}
+
+/** Concise summary of the distinct communes touched by a fire hazard's detections. */
+export function fireCommunesLabel(status: HazardStatus): string | null {
+  const places = new Set<string>();
+  for (const fire of status.fires ?? []) {
+    const place = firePointPlace(fire);
+    if (place) places.add(place);
+  }
+  if (places.size === 0) return null;
+  const list = [...places];
+  return list.length <= 2 ? list.join(", ") : `${list.slice(0, 2).join(", ")} +${list.length - 2}`;
+}
 
 export const HAZARD_META = [
   { key: "wind", title: "Vents violents", Icon: WindIcon },
   { key: "heat", title: "Vague de chaleur", Icon: ThermometerIcon },
-  { key: "fire", title: "Incendies de forêt", Icon: FlameIcon },
+  { key: "fire", title: "Feu détecté", Icon: FlameIcon },
   { key: "flood", title: "Inondations", Icon: WavesIcon },
 ] as const satisfies readonly { key: HazardKey; title: string; Icon: typeof WindIcon }[];
 

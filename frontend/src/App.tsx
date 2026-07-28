@@ -5,6 +5,7 @@ import Dashboard from "./components/Dashboard";
 import {
   BellIcon,
   BellOffIcon,
+  MapPinIcon,
   MoonIcon,
   RefreshIcon,
   ShieldIcon,
@@ -12,6 +13,7 @@ import {
   TriangleAlertIcon,
 } from "./components/icons";
 import { useTheme } from "./hooks/useTheme";
+import { useUserLocation } from "./hooks/useUserLocation";
 
 const POLL_INTERVAL = 30_000;
 
@@ -24,6 +26,7 @@ interface HazardData {
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
+  const { coords, status: locationStatus, requestLocation } = useUserLocation();
   const [data, setData] = useState<HazardData>({
     wind: null,
     heat: null,
@@ -38,10 +41,10 @@ export default function App() {
   async function refresh() {
     try {
       const [wind, heat, fire, flood, humidexReading] = await Promise.all([
-        getWind(),
-        getHeat(),
-        getFire(),
-        getFlood(),
+        getWind(coords),
+        getHeat(coords),
+        getFire(coords),
+        getFlood(coords),
         getHumidex(),
       ]);
       setData({ wind, heat, fire, flood });
@@ -53,11 +56,13 @@ export default function App() {
     }
   }
 
+  // Refetch immediately when the user's position changes, then keep polling.
   useEffect(() => {
     refresh();
     const id = setInterval(refresh, POLL_INTERVAL);
     return () => clearInterval(id);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coords]);
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-rose-50 to-sky-50 text-slate-900 transition-colors duration-200 dark:from-[#0a1120] dark:via-[#152057] dark:to-[#3a1470] dark:text-slate-100">
@@ -86,46 +91,78 @@ export default function App() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
-                error
-                  ? "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/25"
-                  : "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
-              }`}
-            >
-              <span className={`size-2 rounded-full ${error ? "bg-red-500" : "bg-emerald-500"}`} />
-              {error ? "Hors ligne" : "Système Actif"}
-            </span>
+          <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
+                  error
+                    ? "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/25"
+                    : "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+                }`}
+              >
+                <span className={`size-2 rounded-full ${error ? "bg-red-500" : "bg-emerald-500"}`} />
+                {error ? "Hors ligne" : "Système Actif"}
+              </span>
+              <button
+                type="button"
+                onClick={requestLocation}
+                disabled={locationStatus === "locating"}
+                aria-label="Utiliser ma position"
+                title={
+                  locationStatus === "granted" && coords
+                    ? `Ma position : ${coords.lat.toFixed(3)}, ${coords.lon.toFixed(3)}`
+                    : locationStatus === "denied"
+                      ? "Localisation refusée — position par défaut utilisée"
+                      : locationStatus === "unsupported"
+                        ? "Géolocalisation non disponible"
+                        : "Utiliser ma position"
+                }
+                className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors disabled:opacity-60 ${
+                  locationStatus === "granted"
+                    ? "bg-emerald-500/15 text-emerald-600 ring-emerald-300 hover:bg-emerald-500/25 dark:bg-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-500/30"
+                    : locationStatus === "denied" || locationStatus === "unsupported"
+                      ? "bg-amber-500/15 text-amber-600 ring-amber-300 hover:bg-amber-500/25 dark:bg-amber-500/20 dark:text-amber-300 dark:ring-amber-500/30"
+                      : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+                }`}
+              >
+                <MapPinIcon className={`size-4 ${locationStatus === "locating" ? "animate-pulse" : ""}`} />
+              </button>
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+                title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+                className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+              >
+                {theme === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setNotificationsEnabled((v) => !v)}
+                title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                aria-label={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+                aria-pressed={notificationsEnabled}
+                className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors ${
+                  notificationsEnabled
+                    ? "bg-blue-500/15 text-blue-600 ring-blue-300 hover:bg-blue-500/25 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30 dark:hover:bg-blue-500/30"
+                    : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+                }`}
+              >
+                {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
+              </button>
+            </div>
             {lastRefresh && (
-              <span className="hidden items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums sm:inline-flex dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
                 <RefreshIcon className="size-3.5" />
                 Actualisé à {lastRefresh.toLocaleTimeString("fr-FR")}
               </span>
             )}
-            <button
-              type="button"
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-              title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-              className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
-            >
-              {theme === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setNotificationsEnabled((v) => !v)}
-              title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
-              aria-label={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
-              aria-pressed={notificationsEnabled}
-              className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors ${
-                notificationsEnabled
-                  ? "bg-blue-500/15 text-blue-600 ring-blue-300 hover:bg-blue-500/25 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30 dark:hover:bg-blue-500/30"
-                  : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
-              }`}
-            >
-              {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
-            </button>
+            {(locationStatus === "denied" || locationStatus === "unsupported") && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 ring-1 ring-amber-300/60 dark:text-amber-300 dark:ring-amber-500/25">
+                <MapPinIcon className="size-3.5" />
+                Position par défaut — localisation indisponible
+              </span>
+            )}
           </div>
         </header>
 
@@ -145,7 +182,7 @@ export default function App() {
         )}
 
         <main className="min-h-0 flex-1">
-          <Dashboard data={data} humidex={humidex} />
+          <Dashboard data={data} humidex={humidex} userCoords={coords} />
         </main>
       </div>
     </div>

@@ -45,3 +45,5 @@ node_modules/
 .vscode/
 *.swp
 *.swo
+
+*/package-lock.json

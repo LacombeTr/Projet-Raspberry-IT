@@ -1,7 +1,7 @@
 import type { HazardStatus } from "../api/hazards";
 import { CircleCheckIcon, TriangleAlertIcon } from "./icons";
 import type { HazardKey } from "../lib/hazardMeta";
-import { listActiveHazards } from "../lib/hazardMeta";
+import { fireCommunesLabel, listActiveHazards } from "../lib/hazardMeta";
 
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
@@ -56,6 +56,9 @@ export default function AlertsPanel({ data }: Props) {
           {alerts.map(({ key, title, status }) => {
             const ago = timeAgo(status.last_updated);
             const danger = status.severity === "danger";
+            // Fire aggregates many detections: show the affected communes rather
+            // than the monitored "lat, lon" point.
+            const place = (key === "fire" && fireCommunesLabel(status)) || status.location;
             return (
               <li
                 key={key}
@@ -74,8 +77,8 @@ export default function AlertsPanel({ data }: Props) {
                     <p className="mt-0.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                       {status.description}
                     </p>
-                    {status.location && (
-                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{status.location}</p>
+                    {place && (
+                      <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">{place}</p>
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span

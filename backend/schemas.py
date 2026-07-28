@@ -10,6 +10,8 @@ class FirePoint(BaseModel):
     distance_km: float
     brightness: Optional[float] = None
     acquired: Optional[str] = None  # "YYYY-MM-DD HH:MM" (UTC)
+    commune: Optional[str] = None  # commune the detection falls in, when resolved
+    department: Optional[str] = None  # department code (e.g. "13"), when resolved
 
 
 class HazardStatus(BaseModel):

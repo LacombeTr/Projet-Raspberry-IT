@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import type { HazardStatus, HumidexStatus } from "../api/hazards";
+import { lazy, Suspense, useState } from "react";
+import type { Coords, HazardStatus, HumidexStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
 import { SEVERITY_LABEL } from "../lib/hazardMeta";
 import AlertsPanel from "./AlertsPanel";
@@ -14,6 +14,7 @@ const HazardMap = lazy(() => import("./HazardMap"));
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
   humidex: HumidexStatus | null;
+  userCoords: Coords | null;
 }
 
 const SEVERITY_TEXT = {
@@ -49,7 +50,9 @@ const HUMIDEX_SEVERITY_TEXT = {
   danger: "text-red-600 dark:text-red-400",
 } as const;
 
-export default function Dashboard({ data, humidex }: Props) {
+export default function Dashboard({ data, humidex, userCoords }: Props) {
+  const [mapExpanded, setMapExpanded] = useState(false);
+
   return (
     <div className="flex h-full flex-col gap-3">
       {/* Top row: the 5 monitored hazards. 2-up on small screens, 3-up on small tablets, 5-up on wide panels. Fixed height. */}
@@ -86,7 +89,7 @@ export default function Dashboard({ data, humidex }: Props) {
         <StatCard
           icon={<FlameIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-red-400 to-red-500 text-white"
-          label="Incendies de forêt"
+          label="Feu détecté"
           loading={!data.fire}
           value={data.fire && <SeverityValue status={data.fire} />}
           footer={
@@ -142,7 +145,12 @@ export default function Dashboard({ data, humidex }: Props) {
               </div>
             }
           >
-            <HazardMap data={data} />
+            <HazardMap
+              data={data}
+              userCoords={userCoords}
+              expanded={mapExpanded}
+              onCollapse={() => setMapExpanded(false)}
+            />
           </Suspense>
         </div>
 

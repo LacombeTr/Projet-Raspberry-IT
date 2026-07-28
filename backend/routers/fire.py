@@ -1,31 +1,17 @@
-import math
+import asyncio
 from datetime import date
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from config import settings
+from location import Coordinates, get_coordinates, haversine_km, resolve_place
 from schemas import FirePoint, HazardStatus
 
 router = APIRouter()
 
-"""
-Fonction pour calculer la distance entre deux points géographiques en utilisant la formule de Haversine.
-@param lat1: Latitude du premier point en degrés
-@param lon1: Longitude du premier point en degrés
-@param lat2: Latitude du deuxième point en degrés
-@param lon2: Longitude du deuxième point en degrés
-@return: Distance entre les deux points en kilomètres
-"""
-def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    R = 6371
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
-    return R * 2 * math.asin(math.sqrt(a))
-
 @router.get("/", response_model=HazardStatus)
-async def get_fire_status():
+async def get_fire_status(coords: Coordinates = Depends(get_coordinates)):
     today = date.today().isoformat()
     url = settings.FIRMS_URL.format(key=settings.NASA_FIRMS_API_KEY, FIRMS_SOURCE=settings.FIRMS_SOURCE, date=today)
 
@@ -46,7 +32,7 @@ async def get_fire_status():
             fire_lat, fire_lon = float(parts[0]), float(parts[1])
         except ValueError:
             continue
-        dist = _haversine_km(settings.LATITUDE, settings.LONGITUDE, fire_lat, fire_lon)
+        dist = haversine_km(coords.lat, coords.lon, fire_lat, fire_lon)
         if dist > settings.FIRE_RADIUS_KM:
             continue
 
@@ -72,6 +58,17 @@ async def get_fire_status():
             )
         )
 
+    # Reverse-geocode each detection to its commune + department (concurrently,
+    # best-effort).
+    if nearby_fires:
+        async with httpx.AsyncClient(timeout=10) as client:
+            places = await asyncio.gather(
+                *(resolve_place(client, f.latitude, f.longitude) for f in nearby_fires)
+            )
+        for fire, (commune, department) in zip(nearby_fires, places):
+            fire.commune = commune
+            fire.department = department
+
     if nearby_fires:
         closest = min(f.distance_km for f in nearby_fires)
         severity = "danger"
@@ -83,7 +80,7 @@ async def get_fire_status():
     return HazardStatus(
         hazard="fire",
         severity=severity,
-        location=f"{settings.LATITUDE}, {settings.LONGITUDE}",
+        location=f"{coords.lat}, {coords.lon}",
         description=description,
         source="NASA FIRMS (MODIS_NRT)",
         last_updated=today,

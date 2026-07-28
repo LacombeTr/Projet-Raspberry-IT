@@ -1,6 +1,6 @@
 import type { HazardStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
-import { listActiveHazards, SEVERITY_LABEL } from "../lib/hazardMeta";
+import { fireCommunesLabel, listActiveHazards, SEVERITY_LABEL } from "../lib/hazardMeta";
 
 interface Props {
   data: Record<HazardKey, HazardStatus | null>;
@@ -54,7 +54,7 @@ export default function MonitoringPoints({ data }: Props) {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{title}</p>
                 <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                  {status.location ?? status.source}
+                  {(key === "fire" && fireCommunesLabel(status)) || status.location || status.source}
                 </p>
               </div>
               <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -65,6 +65,6 @@ export default function MonitoringPoints({ data }: Props) {
           ))}
         </ul>
       )}
-    </section>
+      </section>
   );
 }
