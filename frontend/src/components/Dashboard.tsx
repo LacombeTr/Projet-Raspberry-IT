@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense } from "react";
 import type { HazardStatus } from "../api/hazards";
 import type { HazardKey } from "../lib/hazardMeta";
 import { SEVERITY_LABEL } from "../lib/hazardMeta";
@@ -26,12 +26,10 @@ function SeverityValue({ status }: { status: HazardStatus }) {
 }
 
 export default function Dashboard({ data }: Props) {
-  const [mapExpanded, setMapExpanded] = useState(false);
-
   return (
-    <div className="space-y-5">
-      {/* Top row: the 4 monitored hazards. Stacks on small screens, 2-up on tablets, 4-up on PC/LCD widths. */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <div className="flex h-full flex-col gap-3">
+      {/* Top row: the 4 monitored hazards. 2-up on small screens, 4-up on tablet/panel widths. Fixed height. */}
+      <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard
           icon={<WindIcon className="size-4" />}
           iconClasses="bg-gradient-to-br from-sky-400 to-sky-500 text-white"
@@ -92,23 +90,23 @@ export default function Dashboard({ data }: Props) {
         />
       </div>
 
-      {/* Map, active alerts and monitoring points all at the same level */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      {/* Map on the left half, alerts and monitoring points on the right half. Fills remaining height. */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-2">
+        <div className="min-h-0">
           <Suspense
             fallback={
-              <div className="flex h-[420px] items-center justify-center rounded-[1.75rem] border border-white/60 bg-white/25 text-sm text-slate-500 backdrop-blur-2xl dark:border-white/15 dark:bg-white/[0.07] dark:text-slate-400">
+              <div className="flex h-full items-center justify-center rounded-[1.75rem] border border-white/60 bg-white/25 text-sm text-slate-500 backdrop-blur-2xl dark:border-white/15 dark:bg-white/[0.07] dark:text-slate-400">
                 Chargement de la carte…
               </div>
             }
           >
-            <HazardMap data={data} expanded={mapExpanded} onCollapse={() => setMapExpanded(false)} />
+            <HazardMap data={data} />
           </Suspense>
         </div>
 
-        <div className="flex flex-col gap-4">
+        <div className="flex min-h-0 flex-col gap-3">
           <AlertsPanel data={data} />
-          <MonitoringPoints data={data} onExpandMap={() => setMapExpanded(true)} />
+          <MonitoringPoints data={data} />
         </div>
       </div>
     </div>
