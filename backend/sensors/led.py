@@ -3,9 +3,13 @@
 # poste de dev Windows), la création du RGBLED gpiozero échoue et `available`
 # reste False afin que les appelants ne fassent rien plutôt que de planter.
 # """
+import logging
+
 from gpiozero import RGBLED
 
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 # Couleur (r, g, b) dans [0, 1] associée à chaque sévérité
 SEVERITY_COLOR = {
@@ -21,6 +25,7 @@ class StatusLED:
         try:
             self._led = RGBLED(red=red, green=green, blue=blue, active_high=False)
         except Exception:
+            logger.exception("Failed to initialize the status RGB LED (red=%d, green=%d, blue=%d)", red, green, blue)
             self._led = None
 
     @property
@@ -29,6 +34,7 @@ class StatusLED:
 
     def set_color(self, severity: str) -> None:
         if not self._led:
+            logger.warning("set_color(%r) ignored: status LED is unavailable", severity)
             return
         self._led.color = SEVERITY_COLOR[severity]
 
