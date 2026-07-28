@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { HazardStatus, HumidexStatus } from "./api/hazards";
 import { getFire, getFlood, getHeat, getHumidex, getWind, setLedSeverity } from "./api/hazards";
 import Dashboard from "./components/Dashboard";
@@ -38,8 +38,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  // Bumped on every refresh() call so a stale in-flight response (e.g. the
+  // pre-GPS-lock fetch that started with no/old coords) can't overwrite the
+  // state — and drive the status LED — after a newer one already landed.
+  const refreshIdRef = useRef(0);
 
   async function refresh() {
+    const requestId = ++refreshIdRef.current;
     try {
       const [wind, heat, fire, flood, humidexReading] = await Promise.all([
         getWind(coords),
@@ -48,12 +53,14 @@ export default function App() {
         getFlood(coords),
         getHumidex(),
       ]);
+      if (requestId !== refreshIdRef.current) return;
       setData({ wind, heat, fire, flood });
       setHumidex(humidexReading);
       setLastRefresh(new Date());
       setError(null);
       setLedSeverity(overallSeverity({ wind, heat, fire, flood }, humidexReading)).catch(() => {});
     } catch (e) {
+      if (requestId !== refreshIdRef.current) return;
       setError(e instanceof Error ? e.message : "Erreur de connexion");
     }
   }
