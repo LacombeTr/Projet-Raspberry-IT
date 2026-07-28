@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
@@ -34,3 +34,7 @@ class HumidexStatus(BaseModel):
     source: str
     last_updated: str
     fires: Optional[List[FirePoint]] = None  # only populated by the fire endpoint
+
+
+class LedRequest(BaseModel):
+    severity: Literal["ok", "warning", "danger"]

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { HazardStatus, HumidexStatus } from "./api/hazards";
-import { getFire, getFlood, getHeat, getHumidex, getWind } from "./api/hazards";
+import { getFire, getFlood, getHeat, getHumidex, getWind, setLedSeverity } from "./api/hazards";
 import Dashboard from "./components/Dashboard";
+import { overallSeverity } from "./lib/hazardMeta";
 import {
   BellIcon,
   BellOffIcon,
@@ -51,6 +52,7 @@ export default function App() {
       setHumidex(humidexReading);
       setLastRefresh(new Date());
       setError(null);
+      setLedSeverity(overallSeverity({ wind, heat, fire, flood }, humidexReading)).catch(() => {});
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur de connexion");
     }
@@ -93,6 +95,12 @@ export default function App() {
 
           <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
             <div className="flex items-center gap-2">
+              {lastRefresh && (
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
+                  <RefreshIcon className="size-3.5" />
+                  Actualisé à {lastRefresh.toLocaleTimeString("fr-FR")}
+                </span>
+              )}
               <span
                 className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
                   error
@@ -127,6 +135,12 @@ export default function App() {
               >
                 <MapPinIcon className={`size-4 ${locationStatus === "locating" ? "animate-pulse" : ""}`} />
               </button>
+              {(locationStatus === "denied" || locationStatus === "unsupported") && (
+              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 ring-1 ring-amber-300/60 dark:text-amber-300 dark:ring-amber-500/25">
+                <MapPinIcon className="size-3.5" />
+                Position par défaut — localisation indisponible
+              </span>
+              )}
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -151,18 +165,6 @@ export default function App() {
                 {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
               </button>
             </div>
-            {lastRefresh && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
-                <RefreshIcon className="size-3.5" />
-                Actualisé à {lastRefresh.toLocaleTimeString("fr-FR")}
-              </span>
-            )}
-            {(locationStatus === "denied" || locationStatus === "unsupported") && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 ring-1 ring-amber-300/60 dark:text-amber-300 dark:ring-amber-500/25">
-                <MapPinIcon className="size-3.5" />
-                Position par défaut — localisation indisponible
-              </span>
-            )}
           </div>
         </header>
 
