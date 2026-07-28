@@ -50,7 +50,7 @@ const HUMIDEX_SEVERITY_TEXT = {
   danger: "text-red-600 dark:text-red-400",
 } as const;
 
-export default function Dashboard({ data, userCoords }: Props) {
+export default function Dashboard({ data, humidex, userCoords }: Props) {
   const [mapExpanded, setMapExpanded] = useState(false);
 
   return (
