@@ -53,3 +53,12 @@ export const getHeat = (coords?: Coords | null) => fetchHazard("/heat/", coords)
 export const getFire = (coords?: Coords | null) => fetchHazard("/fire/", coords);
 export const getFlood = (coords?: Coords | null) => fetchHazard("/flood/", coords);
 export const getHumidex = () => fetchJson<HumidexStatus>("/humidex/");
+
+export async function setLedSeverity(severity: "ok" | "warning" | "danger"): Promise<void> {
+  const res = await fetch("/api/led/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ severity }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status} on /led/`);
+}

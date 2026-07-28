@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     VIGICRUES_STATION_CODE: str
     METEOFRANCE_API_KEY: str
     METEOFRANCE_DEPT: str
+    LED_RED_PIN: int = 17
+    LED_GREEN_PIN: int = 18
+    LED_BLUE_PIN: int = 27
 
     model_config = SettingsConfigDict(
         env_file=".env", 

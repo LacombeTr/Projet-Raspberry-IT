@@ -1,7 +1,9 @@
 import { FlameIcon, ThermometerIcon, WavesIcon, WindIcon } from "../components/icons";
-import type { FirePoint, HazardStatus } from "../api/hazards";
+import type { FirePoint, HazardStatus, HumidexStatus } from "../api/hazards";
 
 export type HazardKey = "wind" | "heat" | "fire" | "flood";
+
+export type Severity = "ok" | "warning" | "danger";
 
 /** A fire detection's place as "Commune (XX)", or just the commune, or null. */
 export function firePointPlace(fire: FirePoint): string | null {
@@ -45,4 +47,26 @@ export function listActiveHazards(data: Record<HazardKey, HazardStatus | null>):
     if (status) entries.push({ key, title, Icon, status });
   }
   return entries.sort((a, b) => rank[a.status.severity] - rank[b.status.severity]);
+}
+
+/** Sévérité à 3 paliers pour le point de surveillance Humidex, alignée sur les
+autres aléas — distincte de `HumidexStatus.severity` (5 paliers) utilisée
+par la StatCard Humidex dédiée.**/
+export function humidexPointSeverity(value: number | null): Severity {
+  if (value === null) return "ok";
+  if (value >= 54) return "danger";
+  if (value >= 45) return "warning";
+  return "ok";
+}
+
+/** Pire sévérité parmi les 4 aléas et l'humidex — utilisée pour piloter la LED de statut. */
+export function overallSeverity(
+  data: Record<HazardKey, HazardStatus | null>,
+  humidex: HumidexStatus | null
+): Severity {
+  const severities = listActiveHazards(data).map((e) => e.status.severity);
+  if (humidex) severities.push(humidexPointSeverity(humidex.humidex));
+  if (severities.includes("danger")) return "danger";
+  if (severities.includes("warning")) return "warning";
+  return "ok";
 }
