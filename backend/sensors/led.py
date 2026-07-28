@@ -23,7 +23,7 @@ class StatusLED:
     def __init__(self, red: int, green: int, blue: int):
         self._led = None
         try:
-            self._led = RGBLED(red=red, green=green, blue=blue, active_high=True)
+            self._led = RGBLED(red=red, green=green, blue=blue, active_high=False)
         except Exception:
             logger.exception("Failed to initialize the status RGB LED (red=%d, green=%d, blue=%d)", red, green, blue)
             self._led = None
