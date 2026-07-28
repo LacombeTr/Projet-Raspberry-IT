@@ -19,7 +19,7 @@ class StatusLED:
     def __init__(self, red: int, green: int, blue: int):
         self._led = None
         try:
-            self._led = RGBLED(red=red, green=green, blue=blue, active_high=False)
+            self._led = RGBLED(red=red, green=green, blue=blue, active_high=True)
         except Exception:
             self._led = None
 
