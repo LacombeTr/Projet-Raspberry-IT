@@ -125,12 +125,17 @@ export default function Dashboard({ data, humidex, userCoords }: Props) {
         />
         <StatCard
           icon={<DropletIcon className="size-4" />}
-          iconClasses="bg-gradient-to-br from-amber-400 to-amber-500 text-white"
+          iconClasses="bg-gradient-to-br from-teal-400 to-cyan-500 text-white"
           label="Humidex"
           loading={!humidex}
           value={humidex && (humidex.humidex !== null ? humidex.humidex : "—")}
           footer={
-            humidex && <span className={HUMIDEX_SEVERITY_TEXT[humidex.severity]}>{humidex.description}</span>
+            humidex &&
+            (humidex.humidex === null ? (
+              <span className="text-slate-600 dark:text-slate-400">{humidex.description}</span>
+            ) : (
+              <span className={HUMIDEX_SEVERITY_TEXT[humidex.severity]}>{humidex.description}</span>
+            ))
           }
         />
       </div>
@@ -156,7 +161,7 @@ export default function Dashboard({ data, humidex, userCoords }: Props) {
 
         <div className="flex min-h-0 flex-col gap-3">
           <AlertsPanel data={data} />
-          <MonitoringPoints data={data} />
+          <MonitoringPoints data={data} humidex={humidex} />
         </div>
       </div>
     </div>
