@@ -276,7 +276,7 @@ export default function HazardMap({ data, expanded = false, onCollapse }: Props)
         />
       )}
       <section
-        className={`group isolate flex h-full min-h-[420px] flex-col overflow-hidden border border-white/60 bg-white/25 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_30px_60px_-20px_rgba(56,189,248,0.35)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/15 dark:bg-white/[0.07] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35),0_30px_65px_-15px_rgba(56,189,248,0.3)] ${
+        className={`group isolate flex h-full flex-col overflow-hidden border border-white/60 bg-white/25 p-5 shadow-[0_10px_30px_rgba(15,23,42,0.12),0_30px_60px_-20px_rgba(56,189,248,0.35)] backdrop-blur-2xl backdrop-saturate-150 dark:border-white/15 dark:bg-white/[0.07] dark:shadow-[0_10px_30px_rgba(0,0,0,0.35),0_30px_65px_-15px_rgba(56,189,248,0.3)] ${
           expanded ? "fixed inset-4 z-50 rounded-[1.75rem] sm:inset-8" : "relative rounded-[1.75rem]"
         }`}
       >

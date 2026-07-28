@@ -57,7 +57,7 @@ export default function App() {
   }, []);
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-slate-50 via-rose-50 to-sky-50 text-slate-900 transition-colors duration-200 dark:from-[#0a1120] dark:via-[#152057] dark:to-[#3a1470] dark:text-slate-100">
+    <div className="relative flex h-screen flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-rose-50 to-sky-50 text-slate-900 transition-colors duration-200 dark:from-[#0a1120] dark:via-[#152057] dark:to-[#3a1470] dark:text-slate-100">
       {/*
         The gradient above is the important part: it guarantees color everywhere on the
         page, at any scroll depth, so the glass cards' backdrop-blur always has something
@@ -72,71 +72,64 @@ export default function App() {
         <div className="absolute -bottom-24 right-1/3 h-[26rem] w-[26rem] rounded-full bg-emerald-100/45 blur-3xl dark:bg-emerald-500/25" />
       </div>
 
-      <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <header className="mb-6 flex flex-col gap-6 pb-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="grid size-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-white/40">
-              <ShieldIcon className="size-6" />
+      <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col px-4 py-3 sm:px-6">
+        <header className="mb-3 flex shrink-0 items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 ring-1 ring-white/40">
+              <ShieldIcon className="size-5" />
             </div>
-            <div>
-              <h1 className="text-2xl font-extrabold uppercase tracking-tight text-blue-700 sm:text-3xl dark:text-sky-300">
-                Hazard Monitor
-              </h1>
-              <p className="mt-0.5 text-xs font-semibold uppercase tracking-widest text-slate-600 sm:text-sm dark:text-slate-400">
-                Surveillance des dangers environnementaux en temps réel
-              </p>
-            </div>
+            <h1 className="text-lg font-extrabold uppercase tracking-tight text-blue-700 dark:text-sky-300">
+              Hazard Monitor
+            </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-            <div className="flex items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
-                  error
-                    ? "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/25"
-                    : "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
-                }`}
-              >
-                <span className={`size-2 rounded-full ${error ? "bg-red-500" : "bg-emerald-500"}`} />
-                {error ? "Hors ligne" : "Système Actif"}
-              </span>
-              <button
-                type="button"
-                onClick={toggleTheme}
-                aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-                title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
-                className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
-              >
-                {theme === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => setNotificationsEnabled((v) => !v)}
-                title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
-                aria-label={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
-                aria-pressed={notificationsEnabled}
-                className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors ${
-                  notificationsEnabled
-                    ? "bg-blue-500/15 text-blue-600 ring-blue-300 hover:bg-blue-500/25 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30 dark:hover:bg-blue-500/30"
-                    : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
-                }`}
-              >
-                {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
-              </button>
-            </div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold ring-1 ${
+                error
+                  ? "bg-red-100 text-red-700 ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-500/25"
+                  : "bg-emerald-100 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/25"
+              }`}
+            >
+              <span className={`size-2 rounded-full ${error ? "bg-red-500" : "bg-emerald-500"}`} />
+              {error ? "Hors ligne" : "Système Actif"}
+            </span>
             {lastRefresh && (
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
+              <span className="hidden items-center gap-1.5 rounded-md bg-slate-900/5 px-3 py-1.5 text-xs font-medium text-slate-500 ring-1 ring-slate-900/10 tabular-nums sm:inline-flex dark:bg-white/5 dark:text-slate-400 dark:ring-white/10">
                 <RefreshIcon className="size-3.5" />
                 Actualisé à {lastRefresh.toLocaleTimeString("fr-FR")}
               </span>
             )}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+              title={theme === "dark" ? "Passer en mode clair" : "Passer en mode sombre"}
+              className="grid size-9 shrink-0 place-items-center rounded-full bg-slate-900/5 text-slate-600 ring-1 ring-slate-900/10 transition-colors hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+            >
+              {theme === "dark" ? <SunIcon className="size-4" /> : <MoonIcon className="size-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => setNotificationsEnabled((v) => !v)}
+              title={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+              aria-label={notificationsEnabled ? "Désactiver les notifications" : "Activer les notifications"}
+              aria-pressed={notificationsEnabled}
+              className={`grid size-9 shrink-0 place-items-center rounded-full ring-1 transition-colors ${
+                notificationsEnabled
+                  ? "bg-blue-500/15 text-blue-600 ring-blue-300 hover:bg-blue-500/25 dark:bg-blue-500/20 dark:text-blue-300 dark:ring-blue-500/30 dark:hover:bg-blue-500/30"
+                  : "bg-slate-900/5 text-slate-600 ring-slate-900/10 hover:bg-slate-900/10 dark:bg-white/5 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-white/10"
+              }`}
+            >
+              {notificationsEnabled ? <BellIcon className="size-4" /> : <BellOffIcon className="size-4" />}
+            </button>
           </div>
         </header>
 
         {error && (
           <div
             role="alert"
-            className="mb-6 flex items-start gap-3 rounded-2xl bg-red-50 px-4 py-3.5 text-sm ring-1 ring-red-200 dark:bg-red-500/10 dark:ring-red-500/25"
+            className="mb-3 flex shrink-0 items-start gap-3 rounded-2xl bg-red-50 px-4 py-3.5 text-sm ring-1 ring-red-200 dark:bg-red-500/10 dark:ring-red-500/25"
           >
             <TriangleAlertIcon className="mt-0.5 size-5 shrink-0 text-red-500 dark:text-red-400" />
             <div>
@@ -148,13 +141,9 @@ export default function App() {
           </div>
         )}
 
-        <main>
+        <main className="min-h-0 flex-1">
           <Dashboard data={data} />
         </main>
-
-        <footer className="mt-10 border-t border-slate-200 pt-5 text-center text-xs font-medium uppercase tracking-widest text-slate-500 dark:border-white/[0.06] dark:text-slate-600">
-          Hazard Monitor · Données actualisées automatiquement toutes les 30 secondes
-        </footer>
       </div>
     </div>
   );
